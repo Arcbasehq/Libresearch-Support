@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+/* LibreSearch palette — mirrors the main app so support feels first-party. */
+@theme {
+	--color-app-background: #171b25;
+	--color-app-accent: #8ab4f8;
+	--color-app-text: #fafafa;
+	--color-app-muted: #9ca3af;
+	--color-app-border: rgba(255, 255, 255, 0.08);
+	--color-app-surface: rgba(255, 255, 255, 0.025);
+}
+
+html,
+body {
+	background: var(--color-app-background);
+	color: var(--color-app-text);
+}
