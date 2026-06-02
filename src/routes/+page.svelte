@@ -45,21 +45,56 @@
 			.slice(0, 6);
 	});
 	const showDropdown = $derived(focused && query.trim().length > 0);
+
+	const ORIGIN = 'https://support.libresearch.ca';
+	const description =
+		'LibreSearch Help Center. Find answers about private search, browser setup, search operators, privacy, and settings — or submit a request.';
+
+	// Structured data: the help center site, its parent organization, and an
+	// index of help articles to aid discovery and rich results.
+	const jsonLd = JSON.stringify([
+		{
+			'@context': 'https://schema.org',
+			'@type': 'WebSite',
+			name: 'LibreSearch Support',
+			url: ORIGIN,
+			publisher: { '@type': 'Organization', name: 'LibreSearch', url: SITE }
+		},
+		{
+			'@context': 'https://schema.org',
+			'@type': 'ItemList',
+			name: 'LibreSearch help articles',
+			itemListElement: articles.map((a, i) => ({
+				'@type': 'ListItem',
+				position: i + 1,
+				name: a.title,
+				url: `${ORIGIN}/articles/${a.slug}`
+			}))
+		}
+	]);
 </script>
 
 <svelte:head>
-	<title>Support - LibreSearch</title>
-	<meta
-		name="description"
-		content="LibreSearch Help Center. Find answers about private search, browser setup, search operators, privacy, and settings — or submit a request."
-	/>
-	<link rel="canonical" href="https://support.libresearch.ca" />
-	<meta property="og:title" content="Support - LibreSearch" />
-	<meta property="og:description" content="LibreSearch Help Center. How can we help?" />
-	<meta property="og:url" content="https://support.libresearch.ca" />
-	<meta property="og:image" content="https://libresearch.ca/og-image.png" />
-	<meta name="twitter:title" content="Support - LibreSearch" />
-	<meta name="twitter:description" content="LibreSearch Help Center. How can we help?" />
+	<title>Support - LibreSearch | Help Center</title>
+	<meta name="description" content={description} />
+	<meta name="robots" content="index, follow, max-image-preview:large" />
+	<link rel="canonical" href={ORIGIN} />
+
+	<!-- Open Graph -->
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content="LibreSearch Support" />
+	<meta property="og:title" content="Support - LibreSearch | Help Center" />
+	<meta property="og:description" content={description} />
+	<meta property="og:url" content={ORIGIN} />
+	<meta property="og:image" content={`${SITE}/og-image.png`} />
+
+	<!-- Twitter -->
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="Support - LibreSearch | Help Center" />
+	<meta name="twitter:description" content={description} />
+	<meta name="twitter:image" content={`${SITE}/og-image.png`} />
+
+	{@html `<script type="application/ld+json">${jsonLd}<\/script>`}
 </svelte:head>
 
 <!-- Sticky header -->

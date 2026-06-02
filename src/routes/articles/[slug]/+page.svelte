@@ -6,15 +6,65 @@
 
 	let { data }: { data: PageData } = $props();
 	const article = $derived(data.article);
+
+	const ORIGIN = 'https://support.libresearch.ca';
+	const url = $derived(`${ORIGIN}/articles/${article.slug}`);
+
+	// Structured data: a help article plus its breadcrumb trail, so search
+	// engines can show it as a rich result.
+	const jsonLd = $derived(
+		JSON.stringify([
+			{
+				'@context': 'https://schema.org',
+				'@type': 'TechArticle',
+				headline: article.title,
+				description: article.excerpt,
+				dateModified: article.updated,
+				articleSection: article.category,
+				mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+				author: { '@type': 'Organization', name: 'LibreSearch' },
+				publisher: {
+					'@type': 'Organization',
+					name: 'LibreSearch',
+					logo: { '@type': 'ImageObject', url: `${SITE}/favicon.png` }
+				}
+			},
+			{
+				'@context': 'https://schema.org',
+				'@type': 'BreadcrumbList',
+				itemListElement: [
+					{ '@type': 'ListItem', position: 1, name: 'Help center', item: ORIGIN },
+					{ '@type': 'ListItem', position: 2, name: article.category, item: url },
+					{ '@type': 'ListItem', position: 3, name: article.title, item: url }
+				]
+			}
+		])
+	);
 </script>
 
 <svelte:head>
 	<title>{article.title} — LibreSearch Support</title>
 	<meta name="description" content={article.excerpt} />
-	<link rel="canonical" href={`https://support.libresearch.ca/articles/${article.slug}`} />
+	<meta name="robots" content="index, follow, max-image-preview:large" />
+	<link rel="canonical" href={url} />
+
+	<!-- Open Graph -->
+	<meta property="og:type" content="article" />
+	<meta property="og:site_name" content="LibreSearch Support" />
 	<meta property="og:title" content={`${article.title} — LibreSearch Support`} />
 	<meta property="og:description" content={article.excerpt} />
-	<meta property="og:url" content={`https://support.libresearch.ca/articles/${article.slug}`} />
+	<meta property="og:url" content={url} />
+	<meta property="og:image" content={`${SITE}/og-image.png`} />
+	<meta property="article:section" content={article.category} />
+	<meta property="article:modified_time" content={article.updated} />
+
+	<!-- Twitter -->
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content={`${article.title} — LibreSearch Support`} />
+	<meta name="twitter:description" content={article.excerpt} />
+	<meta name="twitter:image" content={`${SITE}/og-image.png`} />
+
+	{@html `<script type="application/ld+json">${jsonLd}<\/script>`}
 </svelte:head>
 
 <!-- Header -->
