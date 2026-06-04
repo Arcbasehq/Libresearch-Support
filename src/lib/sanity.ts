@@ -5,22 +5,29 @@
 // Bodies are stored as Portable Text in Sanity and converted to trusted HTML
 // here, which the pages render with {@html}. Editors never write raw HTML.
 
-import { createClient, type ClientConfig } from '@sanity/client';
+import { createClient, type SanityClient } from '@sanity/client';
 import { toHTML } from '@portabletext/to-html';
 import type { PortableTextBlock } from '@portabletext/types';
-import { PUBLIC_SANITY_PROJECT_ID, PUBLIC_SANITY_DATASET } from '$env/static/public';
+// Dynamic (not static) env: reads from the environment at build time without
+// turning a missing var into a compile error. Lets the build succeed even
+// before Sanity env vars are configured on the host (content just falls back
+// to empty until they're set — see PUBLIC_SANITY_* in .env.example).
+import { env } from '$env/dynamic/public';
 
 export const SITE = 'https://libresearch.ca';
 
-const config: ClientConfig = {
-	projectId: PUBLIC_SANITY_PROJECT_ID,
-	dataset: PUBLIC_SANITY_DATASET,
-	apiVersion: '2024-01-01',
-	// CDN is fine for build-time reads of published content.
-	useCdn: true
-};
+const projectId = env.PUBLIC_SANITY_PROJECT_ID;
+const dataset = env.PUBLIC_SANITY_DATASET ?? 'production';
 
-const client = createClient(config);
+const client: SanityClient | null = projectId
+	? createClient({
+			projectId,
+			dataset,
+			apiVersion: '2024-01-01',
+			// CDN is fine for build-time reads of published content.
+			useCdn: true
+		})
+	: null;
 
 export type Article = {
 	slug: string;
@@ -102,6 +109,10 @@ function toArticle(raw: RawArticle): Article {
 // If Sanity isn't configured/reachable yet, don't break the build — return
 // empty content so the site still renders (and rebuild once Sanity is set up).
 async function safeFetch<T>(query: string, params: Record<string, unknown>, fallback: T): Promise<T> {
+	if (!client) {
+		console.warn('[sanity] PUBLIC_SANITY_PROJECT_ID not set, using fallback (empty content).');
+		return fallback;
+	}
 	try {
 		return await client.fetch<T>(query, params);
 	} catch (err) {
