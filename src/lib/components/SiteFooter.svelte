@@ -193,11 +193,6 @@
 				<p class="text-xs text-app-muted">
 					&copy; {new Date().getFullYear()} LibreSearch. Built for privacy.
 				</p>
-				<span class="text-app-muted">·</span>
-				<span
-					class="rounded-full border border-app-border bg-app-background/80 px-2 py-0.5 text-xs text-app-muted backdrop-blur-sm"
-					>v0.5.0</span
-				>
 			</div>
 			<div class="flex items-center gap-4">
 				<a

@@ -21,3 +21,20 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+
+# (if reading) these are future updates, all optional
+# WIP account + billing
+src/lib/server/auth.ts
+src/lib/server/billing.ts
+src/lib/server/guard.ts
+
+src/routes/account/
+src/routes/pricing/
+src/routes/login/
+src/routes/signup/
+
+src/routes/api/auth/
+src/routes/api/paddle/
+
+src/routes/tools/
