@@ -104,20 +104,6 @@
 					<ul class="space-y-2 text-sm">
 						<li>
 							<a
-								href="https://arcbase.one"
-								class="text-app-muted transition hover:text-app-text"
-								target="_blank">Arcbase</a
-							>
-						</li>
-						<li>
-							<a
-								href="https://ai.arcbase.one"
-								class="text-app-muted transition hover:text-app-text"
-								target="_blank">OtterAI</a
-							>
-						</li>
-						<li>
-							<a
 								href="https://libresearch.ca/press"
 								class="text-app-muted transition hover:text-app-text">Press</a
 							>

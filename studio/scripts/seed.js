@@ -1,28 +1,93 @@
-// Central knowledge base for the support site. Each entry renders as a real
-// in-app article at /articles/<slug>, and also feeds the home page category
-// cards and search autocomplete. Bodies are trusted HTML authored here (never
-// user input) and rendered with {@html}.
+// One-time migration: seed Sanity with the help-center content that used to
+// live in src/lib/articles.ts. Converts the trusted HTML bodies into Portable
+// Text with @sanity/block-tools, then builds the article + categoryCard docs.
+//
+// It always writes `seed.ndjson` (import it with the CLI, using your own
+// logged-in account — no token roles to fight):
+//
+//   npx sanity login
+//   npx sanity dataset import seed.ndjson production --replace
+//
+// If a write-capable SANITY_AUTH_TOKEN is set, it ALSO pushes directly via the
+// API. Re-running is safe: documents use stable IDs and are upserted.
 
-export const SITE = 'https://libresearch.ca';
+import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { createClient } from '@sanity/client';
+import { htmlToBlocks } from '@sanity/block-tools';
+import { Schema } from '@sanity/schema';
+import { JSDOM } from 'jsdom';
 
-export type Article = {
-	slug: string;
-	title: string;
-	category: string;
-	excerpt: string;
-	keywords?: string;
-	updated: string;
-	body: string;
-};
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID;
+const dataset = process.env.SANITY_STUDIO_DATASET ?? 'production';
+const token = process.env.SANITY_AUTH_TOKEN;
 
-export const articles: Article[] = [
+const client = token
+	? createClient({ projectId, dataset, apiVersion: '2024-01-01', token, useCdn: false })
+	: null;
+
+const SITE = 'https://libresearch.ca';
+
+// Minimal block schema matching studio/schemaTypes/article.ts so block-tools
+// knows which styles/marks/annotations are allowed.
+const defaultSchema = Schema.compile({
+	name: 'default',
+	types: [
+		{
+			name: 'body',
+			type: 'array',
+			of: [
+				{
+					type: 'block',
+					styles: [
+						{ title: 'Normal', value: 'normal' },
+						{ title: 'Heading', value: 'h2' },
+						{ title: 'Subheading', value: 'h3' }
+					],
+					lists: [
+						{ title: 'Bullet', value: 'bullet' },
+						{ title: 'Numbered', value: 'number' }
+					],
+					marks: {
+						decorators: [
+							{ title: 'Strong', value: 'strong' },
+							{ title: 'Emphasis', value: 'em' },
+							{ title: 'Code', value: 'code' }
+						],
+						annotations: [
+							{
+								name: 'link',
+								type: 'object',
+								fields: [{ name: 'href', type: 'url' }]
+							}
+						]
+					}
+				}
+			]
+		}
+	]
+});
+
+// block-tools takes the array field type (the one with `.of`). Its default
+// rules already map <a href> → link annotations, <h2>/<h3> → styles, <ul>/<ol>
+// → lists, and <strong>/<em>/<code> → decorators, matching our schema.
+const bodyType = defaultSchema.get('body');
+
+function toBlocks(html) {
+	return htmlToBlocks(html, bodyType, {
+		parseHtml: (h) => new JSDOM(h).window.document
+	});
+}
+
+const articles = [
 	{
 		slug: 'make-libresearch-default',
 		title: 'How do I make LibreSearch my default search engine?',
 		category: 'Getting Started',
 		excerpt: 'Add LibreSearch to your browser so every search bar query stays private.',
 		keywords: 'default browser chrome firefox edge safari install extension addon opensearch',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<p>Setting LibreSearch as your default means every query you type in the address bar is private by default — no extra clicks, no tracking.</p>
 			<h2>The easy way: install the extension</h2>
@@ -30,11 +95,11 @@ export const articles: Article[] = [
 			<h2>Set it manually</h2>
 			<ul>
 				<li><strong>Chrome / Edge:</strong> Settings → Search engine → Manage search engines → Add. Use <code>https://libresearch.ca/search?q=%s</code>, then set it as default.</li>
-				<li><strong>Firefox:</strong> Visit <a href="${SITE}">libresearch.ca</a>, click the address-bar menu, and choose “Add LibreSearch”. Then set it as default in Settings → Search.</li>
+				<li><strong>Firefox:</strong> Visit <a href="${SITE}">libresearch.ca</a>, click the address-bar menu, and choose "Add LibreSearch". Then set it as default in Settings → Search.</li>
 				<li><strong>Safari:</strong> Safari doesn't allow custom default engines, so use the extension or set LibreSearch as your homepage.</li>
 			</ul>
 			<h2>Add to your phone</h2>
-			<p>On mobile, open <a href="${SITE}">libresearch.ca</a> and use “Add to Home Screen” to install it as an app, or set it as your browser's search engine where supported.</p>
+			<p>On mobile, open <a href="${SITE}">libresearch.ca</a> and use "Add to Home Screen" to install it as an app, or set it as your browser's search engine where supported.</p>
 		`
 	},
 	{
@@ -43,7 +108,7 @@ export const articles: Article[] = [
 		category: 'Privacy & Security',
 		excerpt: 'No. We never log queries, build profiles, or sell ads. Here is how that works.',
 		keywords: 'logging tracking data retention profile ads anonymous',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<p><strong>No.</strong> LibreSearch does not log the searches you make, and it never ties them to you.</p>
 			<h2>What we don't keep</h2>
@@ -64,7 +129,7 @@ export const articles: Article[] = [
 		category: 'Search Features',
 		excerpt: 'Use quotes, site:, minus, and more to narrow exactly what you want.',
 		keywords: 'operators site filetype intitle exclude quotes boolean advanced',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<p>Operators let you sharpen a search without leaving the search box. Combine them freely.</p>
 			<h2>Common operators</h2>
@@ -91,7 +156,7 @@ export const articles: Article[] = [
 		category: 'Settings',
 		excerpt: 'Tune appearance and result preferences. Settings are stored on your device.',
 		keywords: 'theme dark light region language safesearch preferences localstorage appearance',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<p>All preferences live in <a href="${SITE}/settings">Settings</a>, and they're stored locally in your browser — never on our servers.</p>
 			<h2>Appearance</h2>
@@ -110,7 +175,7 @@ export const articles: Article[] = [
 		category: 'Company',
 		excerpt: 'Learn about our model and how to support the project.',
 		keywords: 'funding money donate support sponsor business model ads',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<p>LibreSearch doesn't run ads and doesn't sell data, so funding comes from people and organizations who want a private search engine to exist.</p>
 			<h2>Where support comes from</h2>
@@ -129,10 +194,10 @@ export const articles: Article[] = [
 		category: 'Privacy & Security',
 		excerpt: 'Found something broken or a vulnerability? Here is how to reach us.',
 		keywords: 'bug vulnerability disclosure report security responsible',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<h2>Found a bug?</h2>
-			<p>Tell us what happened, what you expected, your browser, and steps to reproduce. Send it through the <a href="${SITE}/contact">contact form</a> and pick “Report a bug”.</p>
+			<p>Tell us what happened, what you expected, your browser, and steps to reproduce. Send it through the <a href="${SITE}/contact">contact form</a> and pick "Report a bug".</p>
 			<h2>Found a security vulnerability?</h2>
 			<p>Please disclose responsibly. Report it privately through our <a href="${SITE}/security">security page</a> rather than opening a public issue, and give us a reasonable window to fix it before sharing details.</p>
 			<ul>
@@ -148,13 +213,13 @@ export const articles: Article[] = [
 		category: 'Search Features',
 		excerpt: 'Understand our sources and how results are ranked without personalization.',
 		keywords: 'sources index ranking results provider where personalization',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<p>LibreSearch fetches results from established search providers on your behalf, then presents them without ads or trackers.</p>
 			<h2>You stay anonymous</h2>
 			<p>When you search, our servers query the upstream provider — so the provider sees us, never your IP address or browser. You get the results; nobody gets you.</p>
 			<h2>No personalized ranking</h2>
-			<p>Because we don't build a profile, results aren't bent to a model of “you”. Everyone searching the same terms in the same region sees the same ranking. Your region and language can refine results, but they're never used to identify you.</p>
+			<p>Because we don't build a profile, results aren't bent to a model of "you". Everyone searching the same terms in the same region sees the same ranking. Your region and language can refine results, but they're never used to identify you.</p>
 		`
 	},
 	{
@@ -163,13 +228,13 @@ export const articles: Article[] = [
 		category: 'Privacy & Security',
 		excerpt: 'Read the full policy and how to make a privacy or data request.',
 		keywords: 'gdpr ccpa data request policy legal terms delete',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<p>Our <a href="${SITE}/privacy">privacy policy</a> is the authoritative document on what we collect (very little) and how we handle it.</p>
 			<h2>Making a data request</h2>
 			<p>Regulations like GDPR and CCPA give you rights to access or delete personal data. In practice, LibreSearch doesn't keep search data tied to you, so there's usually nothing to export or erase — but you can still submit a request.</p>
 			<ul>
-				<li>Use the <a href="${SITE}/contact">contact form</a> and choose “Privacy / data request”.</li>
+				<li>Use the <a href="${SITE}/contact">contact form</a> and choose "Privacy / data request".</li>
 				<li>Tell us what you're asking for (access, deletion, or a question).</li>
 				<li>We'll respond within the timeframe the applicable law requires.</li>
 			</ul>
@@ -182,7 +247,7 @@ export const articles: Article[] = [
 		category: 'Getting Started',
 		excerpt: 'Check whether LibreSearch is up and view current incidents.',
 		keywords: 'status uptime down outage incident slow not working',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<p>If search feels slow or won't load, check the live <a href="${SITE}/status">status page</a> first — it shows current uptime and any open incidents.</p>
 			<h2>Quick things to try</h2>
@@ -201,7 +266,7 @@ export const articles: Article[] = [
 		category: 'Company',
 		excerpt: 'Questions the help center did not answer? Send us a message.',
 		keywords: 'contact email support request help reach',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<p>Didn't find your answer here? Reach out — a real person reads every message, with no bots and no tracking.</p>
 			<h2>Send a request</h2>
@@ -218,9 +283,10 @@ export const articles: Article[] = [
 		slug: 'privacy-and-security',
 		title: 'Privacy & Security',
 		category: 'Privacy & Security',
-		excerpt: 'How LibreSearch protects your queries — no logs, no profiles, encrypted by default.',
+		excerpt:
+			'How LibreSearch protects your queries — no logs, no profiles, encrypted by default.',
 		keywords: 'privacy security overview encryption https csp tracking profile proxy',
-		updated: 'June 2, 2026',
+		updated: '2026-06-02',
 		body: `
 			<p>LibreSearch is built so that protecting your privacy isn't a setting you have to find — it's the default. Here's what we do (and don't do) with your searches, and the technology that keeps them secure.</p>
 			<h2>What we never collect</h2>
@@ -252,6 +318,131 @@ export const articles: Article[] = [
 	}
 ];
 
-export function getArticle(slug: string): Article | undefined {
-	return articles.find((a) => a.slug === slug);
+// The four home-page cards, each linking to a featured article.
+const categoryCards = [
+	{
+		title: 'Getting Started',
+		body: 'Set LibreSearch as your default and start searching privately.',
+		icon: 'rocket',
+		slug: 'make-libresearch-default',
+		order: 1
+	},
+	{
+		title: 'Search Features',
+		body: 'Operators, filters, and syntax to sharpen your results.',
+		icon: 'search',
+		slug: 'search-operators',
+		order: 2
+	},
+	{
+		title: 'Privacy & Security',
+		body: 'How we protect your queries. Policies, technology, legal.',
+		icon: 'shield',
+		slug: 'privacy-and-security',
+		order: 3
+	},
+	{
+		title: 'Settings',
+		body: 'Themes, regions, safe search, and other preferences.',
+		icon: 'gear',
+		slug: 'change-theme-region-safe-search',
+		order: 4
+	}
+];
+
+// Short Q&A pairs for the home-page FAQ accordion. `id` gives a stable
+// document _id; answers are HTML, converted to Portable Text like article bodies.
+const faqs = [
+	{
+		id: 'is-libresearch-free',
+		question: 'Is LibreSearch free to use?',
+		answer: `<p>Yes. LibreSearch is free for everyone and funded without ads — see <a href="/articles/how-libresearch-is-funded">how it's funded</a>.</p>`,
+		order: 1
+	},
+	{
+		id: 'do-you-track-me',
+		question: 'Do you track me or log my searches?',
+		answer: `<p>No. We never log queries or build a profile. <a href="/articles/does-libresearch-log-searches">Read the details</a>.</p>`,
+		order: 2
+	},
+	{
+		id: 'set-as-default',
+		question: 'How do I make LibreSearch my default search engine?',
+		answer: `<p>Install our extension or add it manually in your browser settings. <a href="/articles/make-libresearch-default">Step-by-step guide</a>.</p>`,
+		order: 3
+	},
+	{
+		id: 'where-results-from',
+		question: 'Where do the search results come from?',
+		answer: `<p>We fetch results from established providers on your behalf, so they never see you. <a href="/articles/where-results-come-from">More on sources</a>.</p>`,
+		order: 4
+	},
+	{
+		id: 'mobile-app',
+		question: 'Is there a mobile app?',
+		answer: `<p>You can add LibreSearch to your phone's home screen and set it as your browser's search engine. <a href="/articles/make-libresearch-default">See how</a>.</p>`,
+		order: 5
+	}
+];
+
+// Build the document set once; reused for NDJSON output and the API push.
+function buildDocs() {
+	const docs = [];
+	for (const a of articles) {
+		docs.push({
+			_id: `article-${a.slug}`,
+			_type: 'article',
+			title: a.title,
+			slug: { _type: 'slug', current: a.slug },
+			category: a.category,
+			excerpt: a.excerpt,
+			keywords: a.keywords,
+			updated: a.updated,
+			body: toBlocks(a.body)
+		});
+	}
+	for (const c of categoryCards) {
+		docs.push({
+			_id: `categoryCard-${c.slug}`,
+			_type: 'categoryCard',
+			title: c.title,
+			body: c.body,
+			icon: c.icon,
+			order: c.order,
+			article: { _type: 'reference', _ref: `article-${c.slug}` }
+		});
+	}
+	for (const f of faqs) {
+		docs.push({
+			_id: `faq-${f.id}`,
+			_type: 'faq',
+			question: f.question,
+			answer: toBlocks(f.answer),
+			order: f.order
+		});
+	}
+	return docs;
 }
+
+async function run() {
+	const docs = buildDocs();
+
+	// Always emit NDJSON (one document per line) next to this script's parent.
+	const outPath = join(dirname(dirname(fileURLToPath(import.meta.url))), 'seed.ndjson');
+	writeFileSync(outPath, docs.map((d) => JSON.stringify(d)).join('\n') + '\n');
+	console.log(`Wrote ${docs.length} documents to ${outPath}`);
+	console.log('Import with:  npx sanity login  &&  npx sanity dataset import seed.ndjson production --replace');
+
+	// Optionally push directly if a write-capable token was provided.
+	if (client) {
+		const tx = client.transaction();
+		for (const doc of docs) tx.createOrReplace(doc);
+		await tx.commit();
+		console.log(`Also pushed ${docs.length} documents via the API token.`);
+	}
+}
+
+run().catch((err) => {
+	console.error(err);
+	process.exit(1);
+});

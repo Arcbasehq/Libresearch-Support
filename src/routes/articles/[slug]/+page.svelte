@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Logo from '$lib/components/Logo.svelte';
 	import SiteFooter from '$lib/components/SiteFooter.svelte';
-	import { SITE } from '$lib/articles';
+	import { SITE } from '$lib/sanity';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -26,7 +26,7 @@
 				publisher: {
 					'@type': 'Organization',
 					name: 'LibreSearch',
-					logo: { '@type': 'ImageObject', url: `${SITE}/favicon.png` }
+					logo: { '@type': 'ImageObject', url: `${SITE}/favicon.svg` }
 				}
 			},
 			{
@@ -98,9 +98,9 @@
 		<h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{article.title}</h1>
 		<p class="mt-3 text-sm text-app-muted">Last updated {article.updated}</p>
 
-		<!-- Body is trusted HTML authored in src/lib/articles.ts -->
+		<!-- Body is trusted HTML rendered from Sanity Portable Text (see $lib/sanity) -->
 		<div
-			class="prose prose-invert mt-8 max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-app-accent prose-a:no-underline hover:prose-a:underline prose-code:rounded prose-code:bg-white/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:before:content-none prose-code:after:content-none"
+			class="prose mt-8 max-w-none prose-invert prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-app-accent prose-a:no-underline hover:prose-a:underline prose-code:rounded prose-code:bg-white/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:before:content-none prose-code:after:content-none"
 		>
 			{@html article.body}
 		</div>
@@ -108,7 +108,9 @@
 		<!-- Still need help -->
 		<div class="mt-12 rounded-2xl border border-app-border bg-app-surface p-6 text-center">
 			<p class="font-semibold text-app-text">Still have a question?</p>
-			<p class="mt-1 text-sm text-app-muted">Our team reads every message — no bots, no tracking.</p>
+			<p class="mt-1 text-sm text-app-muted">
+				Our team reads every message — no bots, no tracking.
+			</p>
 			<a
 				href={`${SITE}/contact`}
 				class="mt-4 inline-block rounded-full bg-app-accent px-5 py-2.5 text-sm font-medium text-gray-900 transition hover:opacity-90"

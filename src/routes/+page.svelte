@@ -1,34 +1,16 @@
 <script lang="ts">
 	import SiteFooter from '$lib/components/SiteFooter.svelte';
-	import { articles, SITE } from '$lib/articles';
+	import { SITE } from '$lib/sanity';
+	import type { PageData } from './$types';
 
-	// Help category cards under the hero. Each opens a real in-app article.
-	const categories = [
-		{
-			title: 'Getting Started',
-			body: 'Set LibreSearch as your default and start searching privately.',
-			href: '/articles/make-libresearch-default',
-			icon: 'rocket'
-		},
-		{
-			title: 'Search Features',
-			body: 'Operators, filters, and syntax to sharpen your results.',
-			href: '/articles/search-operators',
-			icon: 'search'
-		},
-		{
-			title: 'Privacy & Security',
-			body: 'How we protect your queries. Policies, technology, legal.',
-			href: '/articles/privacy-and-security',
-			icon: 'shield'
-		},
-		{
-			title: 'Settings',
-			body: 'Themes, regions, safe search, and other preferences.',
-			href: '/articles/change-theme-region-safe-search',
-			icon: 'gear'
-		}
-	];
+	let { data }: { data: PageData } = $props();
+
+	// Articles (for search + structured data), the curated category cards under
+	// the hero, and the FAQ entries come from Sanity, fetched at build time in
+	// +page.ts.
+	const articles = $derived(data.articles);
+	const categories = $derived(data.categories);
+	const faqs = $derived(data.faqs);
 
 	let query = $state('');
 	let focused = $state(false);
@@ -52,26 +34,42 @@
 
 	// Structured data: the help center site, its parent organization, and an
 	// index of help articles to aid discovery and rich results.
-	const jsonLd = JSON.stringify([
-		{
-			'@context': 'https://schema.org',
-			'@type': 'WebSite',
-			name: 'LibreSearch Support',
-			url: ORIGIN,
-			publisher: { '@type': 'Organization', name: 'LibreSearch', url: SITE }
-		},
-		{
-			'@context': 'https://schema.org',
-			'@type': 'ItemList',
-			name: 'LibreSearch help articles',
-			itemListElement: articles.map((a, i) => ({
-				'@type': 'ListItem',
-				position: i + 1,
-				name: a.title,
-				url: `${ORIGIN}/articles/${a.slug}`
-			}))
-		}
-	]);
+	const jsonLd = $derived(
+		JSON.stringify([
+			{
+				'@context': 'https://schema.org',
+				'@type': 'WebSite',
+				name: 'LibreSearch Support',
+				url: ORIGIN,
+				publisher: { '@type': 'Organization', name: 'LibreSearch', url: SITE }
+			},
+			{
+				'@context': 'https://schema.org',
+				'@type': 'ItemList',
+				name: 'LibreSearch help articles',
+				itemListElement: articles.map((a, i) => ({
+					'@type': 'ListItem',
+					position: i + 1,
+					name: a.title,
+					url: `${ORIGIN}/articles/${a.slug}`
+				}))
+			},
+			// FAQ rich result — only emitted when there are FAQs to show.
+			...(faqs.length
+				? [
+						{
+							'@context': 'https://schema.org',
+							'@type': 'FAQPage',
+							mainEntity: faqs.map((f) => ({
+								'@type': 'Question',
+								name: f.question,
+								acceptedAnswer: { '@type': 'Answer', text: f.answer }
+							}))
+						}
+					]
+				: [])
+		])
+	);
 </script>
 
 <svelte:head>
@@ -268,6 +266,44 @@
 			{/each}
 		</div>
 	</section>
+
+	<!-- FAQ accordion -->
+	{#if faqs.length}
+		<section class="relative z-10 mx-auto w-full max-w-[800px] px-6 pt-10 pb-16">
+			<h2 class="text-center text-2xl font-bold tracking-tight text-app-text">
+				Frequently asked questions
+			</h2>
+			<div class="mt-8 divide-y divide-app-border border-y border-app-border">
+				{#each faqs as faq (faq.question)}
+					<details class="group">
+						<summary
+							class="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-left font-medium text-app-text transition hover:text-app-accent"
+						>
+							<span>{faq.question}</span>
+							<svg
+								class="h-5 w-5 shrink-0 text-app-muted transition group-open:rotate-180"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</summary>
+						<!-- Answer is trusted HTML rendered from Sanity Portable Text -->
+						<div
+							class="prose prose-invert max-w-none pb-5 text-app-muted prose-a:text-app-accent prose-a:no-underline hover:prose-a:underline"
+						>
+							{@html faq.answer}
+						</div>
+					</details>
+				{/each}
+			</div>
+		</section>
+	{/if}
 
 	<!-- Still need help -->
 	<section class="relative z-10 border-t border-app-border bg-app-surface">

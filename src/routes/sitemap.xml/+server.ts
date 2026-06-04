@@ -1,14 +1,15 @@
-import { articles } from '$lib/articles';
+import { getArticleSlugs } from '$lib/sanity';
 import type { RequestHandler } from './$types';
 
 const ORIGIN = 'https://support.libresearch.ca';
 export const prerender = true;
 
-export const GET: RequestHandler = () => {
+export const GET: RequestHandler = async () => {
+	const slugs = await getArticleSlugs();
 	const urls = [
 		{ loc: `${ORIGIN}/`, priority: '1.0', changefreq: 'weekly' },
-		...articles.map((a) => ({
-			loc: `${ORIGIN}/articles/${a.slug}`,
+		...slugs.map((slug) => ({
+			loc: `${ORIGIN}/articles/${slug}`,
 			priority: '0.7',
 			changefreq: 'monthly'
 		}))
